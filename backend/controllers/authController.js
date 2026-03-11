@@ -1,0 +1,372 @@
+import asyncHandler from "../middlewares/asyncHandler.js";
+import User from "../models/user.js";
+import generateOTP from "../utils/otpGenerator.js";
+import sendEmail from "../utils/sendEmail.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
+import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+
+export const signupUser = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("All fields are required");
+  }
+
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
+    if (userExists.googleId) {
+      res.status(400);
+      throw new Error(
+        "This email is registered with Google. Please sign in with Google."
+      );
+    }
+
+    res.status(400);
+    throw new Error("User already exists");
+  }
+
+  const otp = generateOTP();
+  const otpExpires = Date.now() + 10 * 60 * 1000;
+
+  const user = await User.create({
+    name,
+    email,
+    password,
+    otp,
+    otpExpires,
+  });
+
+  await sendEmail({
+    to: user.email,
+    subject: "Verify your email",
+    text: `Your OTP for email verification is ${otp}. It will expire in 10 minutes.`,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "User registered successfully. Verify OTP.",
+    userId: user._id,
+  });
+});
+
+
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    res.status(400);
+    throw new Error("Email and OTP are required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (user.isEmailVerified) {
+    res.status(400);
+    throw new Error("Email already verified");
+  }
+
+  if (user.otp !== otp) {
+    res.status(400);
+    throw new Error("Invalid OTP");
+  }
+
+  if (user.otpExpires < Date.now()) {
+    res.status(400);
+    throw new Error("OTP expired");
+  }
+
+  user.isEmailVerified = true;
+  user.otp = undefined;
+  user.otpExpires = undefined;
+
+  await user.save();
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  res.json({
+    success: true,
+    message: "Email verified successfully",
+    accessToken,
+  });
+});
+
+export const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Email and password are required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(400);
+    throw new Error("Invalid email or password");
+  }
+
+  if (!user.isEmailVerified) {
+    res.status(403);
+    throw new Error("Please verify your email first");
+  }
+
+  const isMatch = await user.matchPassword(password);
+
+  if (!isMatch) {
+    res.status(400);
+    throw new Error("Invalid email or password");
+  }
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, 
+  });
+
+  res.json({
+    success: true,
+    message: "Login successful",
+    accessToken,
+  });
+
+});
+
+
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    res.status(401);
+    throw new Error("No refresh token found");
+  }
+
+  try {
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+
+    const newAccessToken = generateAccessToken(decoded.id);
+
+    res.json({
+      success: true,
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    res.status(401);
+    throw new Error("Invalid or expired refresh token");
+  }
+
+});
+
+export const logoutUser = asyncHandler(async (req, res) => {
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    expires: new Date(0), 
+  });
+
+  res.json({
+    success: true,
+    message: "Logged out successfully",
+  });
+});
+
+
+export const resendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+
+  const otp = generateOTP();
+  user.otp = otp;
+  user.otpExpires = Date.now() + 10 * 60 * 1000;
+
+  await user.save();
+
+  await sendEmail({
+    to: user.email,
+    subject: "OTP",
+    text: `Your OTP is ${otp}. It expires in 10 minutes.`,
+  });
+
+  res.json({
+    success: true,
+    message: "OTP resent successfully",
+  });
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (user.googleId) {
+    res.status(400);
+    throw new Error(
+      "This account uses Google login. Please sign in with Google."
+    );
+  }
+
+  const otp = generateOTP();
+  user.otp = otp;
+  user.otpExpires = Date.now() + 10 * 60 * 1000;
+
+  await user.save();
+
+  await sendEmail({
+    to: user.email,
+    subject: "Password Reset OTP",
+    text: `Your OTP to reset password is ${otp}. It will expire in 10 minutes.`,
+  });
+
+  res.json({
+    success: true,
+    message: "Password reset OTP sent to email",
+  });
+});
+
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    res.status(400);
+    throw new Error("Email, OTP and new password are required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (user.googleId) {
+    res.status(400);
+    throw new Error("Google accounts cannot reset password.");
+  }
+
+  if (user.otp !== otp) {
+    res.status(400);
+    throw new Error("Invalid OTP");
+  }
+
+  if (user.otpExpires < Date.now()) {
+    res.status(400);
+    throw new Error("OTP expired");
+  }
+
+  user.password = newPassword;
+  user.otp = undefined;
+  user.otpExpires = undefined;
+
+  await user.save();
+
+  res.json({
+    success: true,
+    message: "Password reset successful. Please login again.",
+  });
+});
+
+
+
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { tokenId } = req.body;
+
+  if (!tokenId) {
+    res.status(400);
+    throw new Error("Google token is required");
+  }
+
+  const ticket = await googleClient.verifyIdToken({
+    idToken: tokenId,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  const { sub, email, name } = payload;
+
+  if (!email) {
+    res.status(400);
+    throw new Error("Google account email not found");
+  }
+
+  let user = await User.findOne({ email });
+
+  if (user && !user.googleId) {
+    res.status(400);
+    throw new Error(
+      "Account already exists with email/password. Please login normally."
+    );
+  }
+
+  if (!user) {
+    user = await User.create({
+      name,
+      email,
+      googleId: sub,
+      isEmailVerified: true,
+      password: undefined, 
+    });
+  }
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  res.json({
+    success: true,
+    message: "Google login successful",
+    accessToken,
+  });
+});
