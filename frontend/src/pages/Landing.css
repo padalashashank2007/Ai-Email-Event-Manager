@@ -1,69 +1,137 @@
+/* PAGE BACKGROUND */
+
 .landing-container {
   min-height: 100vh;
+  font-family: "Inter", sans-serif;
+
+  background: linear-gradient(
+    135deg,
+    #72a7dd,
+    #eef2ff
+  );
+
+  color: #1f2933;
+}
+
+/* NAVBAR */
+
+.navbar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+
+  padding: 22px 60px;
 }
 
-.landing-card {
-  background-color: #ffffff;
-  padding: 2.5rem 2rem;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 10px;
-  text-align: center;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  animation: fadeIn 0.4s ease-in-out;
+.logo {
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f46e5;
 }
 
-.landing-title {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-  color: #111827;
-}
-
-.landing-subtitle {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 2rem;
-}
-
-.landing-actions {
+.nav-actions {
   display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
-.landing-actions button {
-  padding: 12px;
-  font-size: 15px;
-  border-radius: 6px;
-  border: none;
+/* BUTTONS */
+
+.login-btn {
+  padding: 8px 18px;
+
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+
+  background: white;
   cursor: pointer;
-  background-color: #4f46e5;
+  color: #111827;
+  transition: all 0.2s ease;
+}
+
+.login-btn:hover {
+  background: #f4f4f5;
+  
+}
+
+.signup-btn {
+  padding: 8px 18px;
+
+  border-radius: 8px;
+  border: none;
+
+  background: #4f46e5;
   color: white;
+  cursor: pointer;
+
+  transition: all 0.2s ease;
 }
 
-.landing-actions button:hover {
-  background-color: #4338ca;
+.signup-btn:hover {
+  background: #4338ca;
 }
 
-.landing-actions .secondary {
-  background-color: #e5e7eb;
+/* HERO */
+
+.hero {
+  height: 80vh;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+
+  max-width: 700px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* TITLE */
+
+.hero-title {
+  font-size: 2.8rem;
+  font-weight: 600;
+
+  margin-bottom: 18px;
+
   color: #111827;
 }
 
-.landing-actions .secondary:hover {
-  background-color: #d1d5db;
+/* SUBTITLE */
+
+.hero-subtitle {
+  font-size: 1.05rem;
+  line-height: 1.6;
+
+  color: #4b5563;
+
+  margin-bottom: 30px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* CTA BUTTON */
+
+.cta-button {
+  padding: 12px 28px;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  border-radius: 10px;
+  border: none;
+
+  background: #6366f1;
+  color: white;
+
+  cursor: pointer;
+
+  box-shadow: 0 8px 20px rgba(99,102,241,0.25);
+
+  transition: all 0.25s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  background: #4f46e5;
+  box-shadow: 0 12px 28px rgba(99,102,241,0.35);
 }
