@@ -6,25 +6,50 @@ function Landing() {
 
   return (
     <div className="landing-container">
-      <div className="landing-card">
-        <h1 className="landing-title">Welcome 👋</h1>
-        <p className="landing-subtitle">
-          Get started with your account
-        </p>
 
-        <div className="landing-actions">
-          <button onClick={() => navigate("/login")}>
+      {/* Navbar */}
+      <nav className="navbar">
+        <div className="logo">Smart Scheduler</div>
+
+        <div className="nav-actions">
+          <button
+            className="login-btn"
+            onClick={() => navigate("/login")}
+          >
             Login
           </button>
 
-          <button
-            className="secondary"
+          {/* <button
+            className="signup-btn"
             onClick={() => navigate("/signup")}
           >
             Signup
-          </button>
+          </button> */}
         </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="hero">
+
+        <h1 className="hero-title">
+          Organize Your Schedule Smarter
+        </h1>
+
+        <p className="hero-subtitle">
+          Let AI read your emails and automatically schedule events
+          into your calendar. Focus on your work while we handle
+          the planning.
+        </p>
+
+        <button
+          className="cta-button"
+          onClick={() => navigate("/signup")}
+        >
+          Get Started
+        </button>
+
       </div>
+
     </div>
   );
 }
