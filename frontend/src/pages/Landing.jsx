@@ -28,7 +28,6 @@ function Landing() {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <div className="hero">
 
         <h1 className="hero-title">

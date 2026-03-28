@@ -12,10 +12,10 @@ function GoogleLoginButton() {
       if (!window.google) return;
 
       window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: async (response) => {
+        client_id: import.meta.env.VITE_GOOGLE_LOGIN_CLIENT_ID,
+        callback: async (response) => {
           try {
-            const res = await googleLogin(response.credential);
+            const res = await googleLogin({ tokenId: response.credential });
             login(res.accessToken);
             navigate("/home");
           } catch (err) {

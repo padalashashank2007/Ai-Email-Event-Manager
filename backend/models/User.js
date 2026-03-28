@@ -35,6 +35,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    googleRefreshToken: {
+      type: String,
+      default: null,
+    },
+
+    isCalendarLinked: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

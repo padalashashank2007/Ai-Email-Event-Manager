@@ -1,12 +1,18 @@
 import asyncHandler from "../middlewares/asyncHandler.js";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import generateOTP from "../utils/otpGenerator.js";
 import sendEmail from "../utils/sendEmail.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const getGoogleClient = () => {
+  return new OAuth2Client(
+    process.env.GOOGLE_LOGIN_CLIENT_ID,
+    process.env.GOOGLE_LOGIN_CLIENT_SECRET,
+    "postmessage"
+  );
+};
 
 
 export const signupUser = asyncHandler(async (req, res) => {
@@ -315,20 +321,38 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
 
 export const googleLogin = asyncHandler(async (req, res) => {
-  const { tokenId } = req.body;
+  const { tokenId, code } = req.body;
 
-  if (!tokenId) {
+  if (!tokenId && !code) {
     res.status(400);
-    throw new Error("Google token is required");
+    throw new Error("Google token or auth code is required");
   }
 
-  const ticket = await googleClient.verifyIdToken({
-    idToken: tokenId,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
+  const googleClient = getGoogleClient();
 
-  const payload = ticket.getPayload();
-  const { sub, email, name } = payload;
+  let sub, email, name, tokensObj = {};
+
+  if (code) {
+    const { tokens } = await googleClient.getToken(code);
+    tokensObj = tokens;
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_LOGIN_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    sub = payload.sub;
+    email = payload.email;
+    name = payload.name;
+  } else if (tokenId) {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokenId,
+      audience: process.env.GOOGLE_LOGIN_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    sub = payload.sub;
+    email = payload.email;
+    name = payload.name;
+  }
 
   if (!email) {
     res.status(400);
@@ -351,7 +375,23 @@ export const googleLogin = asyncHandler(async (req, res) => {
       googleId: sub,
       isEmailVerified: true,
       password: undefined, 
+      googleRefreshToken: tokensObj.refresh_token || null,
+      isCalendarLinked: !!tokensObj.refresh_token,
     });
+  } else {
+    let updated = false;
+    if (tokensObj.refresh_token) {
+      user.googleRefreshToken = tokensObj.refresh_token;
+      user.isCalendarLinked = true;
+      updated = true;
+    }
+    if (!user.googleId) {
+      user.googleId = sub;
+      updated = true;
+    }
+    if (updated) {
+      await user.save();
+    }
   }
 
   const accessToken = generateAccessToken(user._id);

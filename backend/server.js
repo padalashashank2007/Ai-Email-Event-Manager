@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 app.get("/", (req, res) => {
   res.send("Auth API is running...");

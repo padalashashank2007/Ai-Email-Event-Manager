@@ -4,7 +4,6 @@ import './ProfileSettings.css';
 
 function ProfileSettings() {
   const navigate = useNavigate();
-  // Using some mock data for the profile state initially
   const [profileData, setProfileData] = useState({
     firstName: 'User',
     lastName: 'Name',
@@ -24,7 +23,6 @@ function ProfileSettings() {
 
   const handleSave = (e) => {
     e.preventDefault();
-    // Here we would typically make an API call to save the data
     alert('Profile updated successfully!');
     setIsEditing(false);
   };
